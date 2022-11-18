@@ -15,24 +15,49 @@ def home(req):
 
 class feed(APIView):
 
-    permission_classes = (IsAuthenticated,)
+    #permission_classes = (IsAuthenticated,)
 
     def get(self,req):
         id = req.user.pk
 
+        nb = int(req.GET.get("nb","10"))
+
         qr = Click.objects.all()
         shuffle(qr)
-        res = ClickSerializer(qr,many=True).data
+        res = ClickSerializer(qr[:nb],many=True).data
 
         return Response(res)
 
 class click(APIView):
     
     def post(self,req):
-        data = json.loads(req.body)
-        id = data.get("id")
+        id = req.user.pk
 
-        return Response({"success":True})
+        data = json.loads(req.body)
+        
+        Click.objects.create(owner=id,image=data.get("img"),msg=data.get("msg"),origin=id)
+
+        return Response({"msg":"you created a post"})
+
+    def update(self,req):
+        id = req.user.pk
+
+        data = json.loads(req.body)
+
+        post = Click.objects.get(pk=data.get("uid"))
+        post.update(image=data.get("img"),msg=data.get("msg"))
+
+        return Response({"msg":"you update a post"})
+
+    def delete(self,req):
+        id = req.user.pk
+
+        data = json.loads(req.body)
+
+        Click.objects.get(pk=data.get("uid")).delete()
+
+        return Response({"msg":"you deleted a post"})
+    
 
 class follow(APIView):
 
@@ -132,6 +157,13 @@ class engageShare(APIView):
 
 from django.db.models import Q
 
+class partners(APIView):
+    def get(self,req):
+        
+        qr = Profile.objects.all()
+        res = ProfileSerializer(qr,many=True).data
+        return Response({'data':res})
+
 class conversation(APIView):
     def get(self,req):
         id = req.user.pk
@@ -226,3 +258,40 @@ class notification(APIView):
         Notification.objects.create(to=id,who=who,msg=msg)
 
         return Response({"msg":"notification is created"})
+
+class profile(APIView):
+    
+    def get(self,req):
+        id = req.user.pk
+
+        pr = Profile.objects.get(pk=id)
+        res = ProfileSerializer(pr,many=True).data
+
+        return Response(res)
+
+    def post(self,req):
+        id = req.user.pk
+
+        data = json.loads(req.body)
+
+        pr = Profile.objects.get(pk=id)
+
+        # change something 
+
+        return Response({"msg":"Data is changed now !"})
+
+
+@api_view(["POST"])
+def usercreate(req):
+    data = json.loads(req.body)
+    try:
+        profile = Profile.objects.create_user(name=data.get("name") ,email=data.get("email"),password=data.get("password"))
+        return Response({"msg":"successfully created"})
+    except Exception as e:
+        return Response({"msg":"error in creation : "+str(e)})
+
+@api_view(["POST"])
+def testend(req):
+    data = json.loads(req.body)
+    print(data)
+    return Response({"tok":"dsfqsdfqdf"})
