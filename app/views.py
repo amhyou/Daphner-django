@@ -207,7 +207,7 @@ class conversation(APIView):
         return Response({"msg":"conversation is deleted"})
 
 class message(APIView):
-
+    permission_classes = (IsAuthenticated,)
     def get(self,req):
         id = req.user.pk
         me = Profile.objects.get(pk=id)
@@ -278,23 +278,28 @@ class notification(APIView):
         return Response({"msg":"notification is created"})
 
 class profile(APIView):
-    
+    permission_classes = (IsAuthenticated,)
     def get(self,req):
         id = req.user.pk
 
         pr = Profile.objects.get(pk=id)
-        res = ProfileSerializer(pr,many=True).data
+        res = ProfileSerializer(pr).data
 
         return Response(res)
 
     def post(self,req):
         id = req.user.pk
-
-        data = json.loads(req.body)
-
         pr = Profile.objects.get(pk=id)
-
-        # change something 
+        try:
+            data = json.loads(req.body)
+            if data.get("type")=="smya":
+                pr.name = data.get("value")
+                pr.save()
+        except Exception as e:
+            print(req.data)
+            pr.image = req.data.get("image")
+            pr.save()
+            return Response({"url":pr.image.url})
 
         return Response({"msg":"Data is changed now !"})
 
