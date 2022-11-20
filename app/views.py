@@ -15,7 +15,7 @@ def home(req):
 
 class feed(APIView):
 
-    #permission_classes = (IsAuthenticated,)
+    permission_classes = (IsAuthenticated,)
 
     def get(self,req):
         id = req.user.pk
@@ -158,62 +158,80 @@ class engageShare(APIView):
 from django.db.models import Q
 
 class partners(APIView):
-    def get(self,req):
-        
-        qr = Profile.objects.all()
-        res = ProfileSerializer(qr,many=True).data
-        return Response({'data':res})
-
-class conversation(APIView):
+    permission_classes = (IsAuthenticated,)
     def get(self,req):
         id = req.user.pk
+        me = Profile.objects.get(pk=id)
 
-        qr = Conversation.objects.filter(Q(creator=id)|Q(sender=id))
-        res = ConversationSerializer(qr,many=True).data
+        qr = Profile.objects.exclude(Q(creator__sender=me)|Q(sender__creator=me)).exclude(pk=id)
+        res = ProfileSerializer(qr,many=True).data
+        print(res)
+        return Response(res)
+
+class conversation(APIView):
+    permission_classes = (IsAuthenticated,)
+    def get(self,req):
+        id = req.user.pk
+        me = Profile.objects.get(pk=id)
+        
+        qr = Profile.objects.filter(Q(creator__sender=me)|Q(sender__creator=me))
+        res = ProfileSerializer(qr,many=True).data
+
+        print(res)
 
         return Response(res)
 
     def post(self,req):
         id = req.user.pk
+        me = Profile.objects.get(pk=id)
 
         data = json.loads(req.body)
-        partner = data.get("partner")
-        partner_name = Profile.objects.get(pk=partner).name
+        partner = Profile.objects.get(pk=data.get("partner"))
 
         # check later to have unique conversation between same 2 persons
-        Conversation.objects.create(creator=id,sender=partner,sender_name=partner_name)
+        if Conversation.objects.filter(Q(creator=partner,sender=me)|Q(creator=me,sender=partner)).exists():
+            return Response({"msg":"conversation already exist , refresh to see"})
+        Conversation.objects.create(creator=me,sender=partner,sender_name=partner.name)
 
         return Response({"msg":"conversation is created between you and your partner"})
 
     def delete(self,req):
         id = req.user.pk
+        me = Profile.objects.get(pk=id)
 
         data = json.loads(req.body)
-        partner = data.get("partner")
+        partner = Profile.objects.get(pk=data.get("partner"))
 
-        Conversation.objects.filter(Q(creator=id,sender=partner)|Q(creator=partner,sender=id)).delete()
+        Conversation.objects.filter(Q(creator=me,sender=partner)|Q(creator=partner,sender=me)).delete()
 
-        return Response({"msg":"conversation is created between you and your partner"})
+        return Response({"msg":"conversation is deleted"})
 
 class message(APIView):
 
-    def get(self,req,uid):
+    def get(self,req):
         id = req.user.pk
+        me = Profile.objects.get(pk=id)
 
-        qr = Message.objects.filter(conv=uid)
+        partner = Profile.objects.get(pk=req.GET.get("partner"))
+
+        qr = Message.objects.filter(Q(conv__creator=me,conv__sender=partner)|Q(conv__creator=partner,conv__sender=me))
         res = MessageSerializer(qr,many=True).data
 
         return Response(res)
 
-    def post(self,req,uid):
+    def post(self,req):
         id = req.user.pk
+        me = Profile.objects.get(pk=id)
 
         data = json.loads(req.body)
-        msg = data.get("msg")
-
-        Message.objects.create(issuer=id,conv=uid,msg=msg)
-
-        return Response({"msg":"message is created in the conversation"})
+        partner = Profile.objects.get(pk=data.get("partner"))
+        try:
+            conv = Conversation.objects.get(Q(creator=me,sender=partner)|Q(creator=partner,sender=me))
+        except Exception as e:
+            return Response({"msg":"conv not there"})
+        msg = Message.objects.create(issuer=me,conv=conv,msg=data.get("msg"))
+    
+        return Response(MessageSerializer(msg).data)
 
     def delete(self,req,uid):
         id = req.user.pk

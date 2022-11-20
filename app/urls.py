@@ -15,7 +15,7 @@ urlpatterns = [
     path('click/<uid>/comment',engageComment.as_view()),
     path('click/<uid>/share',engageShare.as_view()),
     path('conversation',conversation.as_view()),
-    path('conversation/<uid>/message',message.as_view()),
+    path('message',message.as_view()),
     path('notification',notification.as_view()),
     path('profile',profile.as_view()),
     path('partners',partners.as_view()),
