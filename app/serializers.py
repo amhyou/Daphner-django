@@ -17,10 +17,25 @@ class MessageSerializer(ModelSerializer):
         model = Message
         fields = "__all__"
 
+class LikeSerializer(ModelSerializer):
+    class Meta:
+        model = Like
+        fields = "__all__"
+
+class ShareSerializer(ModelSerializer):
+    sender = ProfileSerializer()
+    class Meta:
+        model = Share
+        fields = "__all__"
+
 class ClickSerializer(ModelSerializer):
+    owners = ProfileSerializer(source='owner')
+    origins = ProfileSerializer(source='origin')
+    likers = LikeSerializer(source="like_set",many=True)
     class Meta:
         model = Click
         fields = "__all__"
+        
 
 class CommentSerializer(ModelSerializer):
     class Meta:
@@ -30,16 +45,6 @@ class CommentSerializer(ModelSerializer):
 class FollowerSerializer(ModelSerializer):
     class Meta:
         model = Follower
-        fields = "__all__"
-
-class LikeSerializer(ModelSerializer):
-    class Meta:
-        model = Like
-        fields = "__all__"
-
-class ShareSerializer(ModelSerializer):
-    class Meta:
-        model = Share
         fields = "__all__"
 
 class NotificationSerializer(ModelSerializer):

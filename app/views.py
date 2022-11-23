@@ -22,9 +22,11 @@ class feed(APIView):
 
         nb = int(req.GET.get("nb","10"))
 
-        qr = Click.objects.all()
-        shuffle(qr)
+        qr = Click.objects.all().order_by('?')
+        
+
         res = ClickSerializer(qr[:nb],many=True).data
+
 
         return Response(res)
 
@@ -32,10 +34,11 @@ class click(APIView):
     
     def post(self,req):
         id = req.user.pk
+        me = Profile.objects.get(pk=id)
 
-        data = json.loads(req.body)
+        data = req.data
         
-        Click.objects.create(owner=id,image=data.get("img"),msg=data.get("msg"),origin=id)
+        Click.objects.create(owner=me,image=data.get("img"),msg=data.get("msg"),origin=me)
 
         return Response({"msg":"you created a post"})
 
@@ -110,18 +113,20 @@ class engageLike(APIView):
 
     def post(self,req,uid):
         id = req.user.pk
+        me = Profile.objects.get(pk=id)
         post = Click.objects.get(pk=uid)
 
-        if Like.objects.filter(click=post,sender=id).exists():
-            Like.objects.filter(click=post,sender=id).delete()
-            post.likes += 1
-            post.save()
-            return Response({"msg":"you unliked the post"})
-        else:
-            Like.objects.create(click=post,sender=id)
+        if Like.objects.filter(click=post,sender=me).exists():
+            Like.objects.filter(click=post,sender=me).delete()
             post.likes -= 1
             post.save()
-            return Response({"msg":"you liked the post"})
+            return Response({"diff":-1})
+        else:
+            Like.objects.create(click=post,sender=me)
+            post.likes += 1
+            post.save()
+            Notification.objects.create(to=post.owner,who=me,msg=f"{me.id} liked your post {post.id}")
+            return Response({"diff":1})
 
 class engageComment(APIView):
 
@@ -145,15 +150,23 @@ class engageComment(APIView):
 
 class engageShare(APIView):
 
+    def get(self,req,uid):
+        id = req.user.pk
+        post = Click.objects.get(pk=uid)
+        sharers = Share.objects.filter(click=post).order_by('time')
+        return Response(ShareSerializer(sharers[::-1],many=True).data)
+
     def post(self,req,uid):
         id = req.user.pk
-        post = Click.objects.get(pk=id)
+        me = Profile.objects.get(pk=id)
+        post = Click.objects.get(pk=uid)
         data = json.loads(req.body)
-        Share.objects.create(click=uid,sender=id)
+        newshare = Share.objects.create(click=post,sender=me)
         post.shares += 1
         post.save()
-        Click.objects.create(owner=id,image=post.image,msg=post.msg,origin=post.owner)
-        return Response({"msg":"this post is added to your profile"})
+        Click.objects.create(owner=me,image=post.image,msg=post.msg,origin=post.owner)
+        Notification.objects.create(to=post.owner,who=me,msg=f"{me.id} shared your post {post.id}")
+        return Response({"new":ShareSerializer(newshare).data})
 
 from django.db.models import Q
 

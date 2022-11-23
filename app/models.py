@@ -140,7 +140,7 @@ class Click(models.Model):
     owner = models.ForeignKey(Profile,on_delete=models.CASCADE,related_name='owner')
     origin = models.ForeignKey(Profile,on_delete=models.CASCADE,related_name='origin')
     msg = models.TextField()
-    image = models.ImageField()
+    image = models.ImageField(upload_to="posts/")
     likes = models.IntegerField(default=0)
     comments = models.IntegerField(default=0)
     shares = models.IntegerField(default=0)
