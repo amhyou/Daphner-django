@@ -130,11 +130,22 @@ class engageLike(APIView):
 
 class engageComment(APIView):
 
+    def get(self,req,uid):
+        id = req.user.pk
+        post = Click.objects.get(pk=uid)
+        commenters = Comment.objects.filter(click=post).order_by('time')
+        return Response(CommentSerializer(commenters[::-1],many=True).data)
+
     def post(self,req,uid):
         id = req.user.pk
+        me = Profile.objects.get(pk=id)
+        post = Click.objects.get(pk=uid)
         data = json.loads(req.body)
-        Comment.objects.create(click=uid,sender=id,msg=data.get("msg"))
-        return Response({"msg":"comment added to the post"})
+        newcom = Comment.objects.create(click=post,sender=me,msg=data.get("msg"))
+        post.comments +=1
+        post.save()
+        Notification.objects.create(to=post.owner,who=me,msg=f"{me.id} commented your post {post.id}")
+        return Response({"new":CommentSerializer(newcom).data})
 
     def update(self,req,uid):
         id = req.user.pk

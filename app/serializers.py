@@ -28,6 +28,12 @@ class ShareSerializer(ModelSerializer):
         model = Share
         fields = "__all__"
 
+class CommentSerializer(ModelSerializer):
+    sender = ProfileSerializer()
+    class Meta:
+        model = Comment
+        fields = "__all__"
+
 class ClickSerializer(ModelSerializer):
     owners = ProfileSerializer(source='owner')
     origins = ProfileSerializer(source='origin')
@@ -36,11 +42,6 @@ class ClickSerializer(ModelSerializer):
         model = Click
         fields = "__all__"
         
-
-class CommentSerializer(ModelSerializer):
-    class Meta:
-        model = Comment
-        fields = "__all__"
 
 class FollowerSerializer(ModelSerializer):
     class Meta:
