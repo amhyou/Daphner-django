@@ -31,16 +31,22 @@ class feed(APIView):
         return Response(res)
 
 class click(APIView):
-    
+    permission_classes = (IsAuthenticated,)
+    def get(self,req):
+
+        rq = Click.objects.filter(owner__pk=req.GET.get("pro","0"))
+
+        return Response(ClickSerializer(rq,many=True).data)
+
     def post(self,req):
         id = req.user.pk
         me = Profile.objects.get(pk=id)
 
         data = req.data
         
-        Click.objects.create(owner=me,image=data.get("img"),msg=data.get("msg"),origin=me)
+        click = Click.objects.create(owner=me,image=data.get("img"),msg=data.get("msg"),origin=me)
 
-        return Response({"msg":"you created a post"})
+        return Response({"new":ClickSerializer(click).data})
 
     def update(self,req):
         id = req.user.pk
@@ -63,26 +69,37 @@ class click(APIView):
     
 
 class follow(APIView):
-
+    permission_classes = (IsAuthenticated,)
     def get(self,req):
         id = req.user.pk
 
-        nb = req.GET.get("nb")
-        
-        qr = Profile.objects.all()
-        shuffle(qr)
-        res = ProfileSerializer(qr[:nb],many=True).data
+        otherStats = int(req.GET.get("stats","0"))
+        if otherStats:
+            followers = Follower.objects.filter(pro__pk=otherStats).count()
+            following = Follower.objects.filter(fan__pk=otherStats).count()
+            followed = Follower.objects.filter(pro__pk=otherStats,fan__pk=id).exists()
+            return Response({"followers":followers,"following":following,'followed':followed})
 
-        return Response(res)
+        me = Profile.objects.get(pk=id)
+
+        nb = int(req.GET.get("nb","10"))
+        
+        qr = Profile.objects.exclude(pro__fan=me).exclude(pk=id).order_by("id")
+        res = ProfileSerializer(qr,many=True).data
+        
+        return Response(res[:nb])
 
     def post(self,req):
         id = req.user.pk
+        me = Profile.objects.get(pk=id)
 
         data = json.loads(req.body)
         star_id = data.get("star_id")
+        star = Profile.objects.get(pk=star_id)
 
-        if not Follower.objects.filter(pro=star_id,fan=id).exists():
-            Follower.objects.create(pro=star_id,fan=id)
+        if not Follower.objects.filter(pro=star,fan=me).exists():
+            Follower.objects.create(pro=star,fan=me)
+            Notification.objects.create(to=star,who=me,msg=f"user{id} followed you")
             return Response({"subscribed":"success"})
         return Response({"subscribed":"echec, perhaps it's already subscribed to!"})
 
@@ -98,19 +115,19 @@ class follow(APIView):
         return Response({"unsubscrie":"echec, perhaps not subscribed to yet!"})
 
 class topclicks(APIView):
+    permission_classes = (IsAuthenticated,)
     def get(self,req):
         id = req.user.pk
-
-        nb = req.GET.get("nb")
+        nb = int(req.GET.get("nb","20"))
 
         qr = Click.objects.all()
-        qr.sort(key=lambda x:x.likes+2*x.comments+3*x.shares)
-        resp = ClickSerializer(qr[:nb],many=True).data
+        res = ClickSerializer(qr,many=True).data
+        res.sort(key=lambda x:x["likes"]+2*x["comments"]+3*x["shares"],reverse=True)
 
-        return Response(qr)
+        return Response(res[:nb])
 
 class engageLike(APIView):
-
+    permission_classes = (IsAuthenticated,)
     def post(self,req,uid):
         id = req.user.pk
         me = Profile.objects.get(pk=id)
@@ -129,7 +146,7 @@ class engageLike(APIView):
             return Response({"diff":1})
 
 class engageComment(APIView):
-
+    permission_classes = (IsAuthenticated,)
     def get(self,req,uid):
         id = req.user.pk
         post = Click.objects.get(pk=uid)
@@ -160,7 +177,7 @@ class engageComment(APIView):
         return Response({"msg":"comment deleted from te post"})
 
 class engageShare(APIView):
-
+    permission_classes = (IsAuthenticated,)
     def get(self,req,uid):
         id = req.user.pk
         post = Click.objects.get(pk=uid)
@@ -268,14 +285,14 @@ class message(APIView):
         return Response({"msg":"message is created in the conversation"})
 
 class notification(APIView):
-
+    permission_classes = (IsAuthenticated,)
     def get(self,req):
         id = req.user.pk
 
-        qr = Notification.objects.filter(to=id)
+        qr = Notification.objects.filter(to=id).order_by("time")
         res = NotificationSerializer(qr,many=True).data
 
-        return Response(res)
+        return Response(res[::-1])
 
     def post(self,req):
         id = req.user.pk
@@ -305,6 +322,11 @@ class profile(APIView):
     permission_classes = (IsAuthenticated,)
     def get(self,req):
         id = req.user.pk
+
+        otherUser = int(req.GET.get("stats","0"))
+        if otherUser:
+            pr = Profile.objects.get(pk=otherUser)
+            return Response(ProfileSerializer(pr).data)
 
         pr = Profile.objects.get(pk=id)
         res = ProfileSerializer(pr).data

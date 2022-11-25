@@ -49,6 +49,7 @@ class FollowerSerializer(ModelSerializer):
         fields = "__all__"
 
 class NotificationSerializer(ModelSerializer):
+    pro = ProfileSerializer(source="who")
     class Meta:
         model = Notification
         fields = "__all__"

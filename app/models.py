@@ -191,6 +191,7 @@ class Notification(models.Model):
     to = models.ForeignKey(Profile,on_delete=models.CASCADE,related_name='to')
     who = models.ForeignKey(Profile,on_delete=models.CASCADE,related_name='who')
     msg = models.CharField(max_length=200)
+    time = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return("notif from "+self.who+" to "+self.to)
