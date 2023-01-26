@@ -23,9 +23,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-&g2#0(j2l_a^iiv553m@8nsc--2t@0uwggp(_n^^qd!04b3cdt'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = ["daphner.azurewebsites.net","127.0.0.1","localhost"]
+from socket import gethostname, gethostbyname 
+ALLOWED_HOSTS = ["*"] 
 
 
 # Application definition
